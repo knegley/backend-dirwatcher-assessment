@@ -1,0 +1,18 @@
+2020-07-02 16:22:06,428: DEBUG: asyncio:Using selector: EpollSelector
+2020-07-02 16:22:06,463: INFO: __main__:hello
+2020-07-02 16:22:06,469: INFO: __main__:goodbye
+2020-07-02 16:22:06,488: INFO: __main__:['.vscode/']
+2020-07-02 16:22:11,471: INFO: __main__:hello
+2020-07-02 16:22:11,479: INFO: __main__:goodbye
+2020-07-02 16:22:16,482: INFO: __main__:hello
+2020-07-02 16:22:16,489: INFO: __main__:goodbye
+2020-07-02 16:22:16,539: INFO: __main__:['I love to eat cheese and eggs. ']
+2020-07-02 16:22:21,491: INFO: __main__:hello
+2020-07-02 16:22:21,498: INFO: __main__:goodbye
+2020-07-02 16:22:26,501: INFO: __main__:hello
+2020-07-02 16:22:26,510: INFO: __main__:goodbye
+2020-07-02 16:22:26,587: INFO: __main__:['I love to go riding a bike.']
+2020-07-02 16:22:31,514: INFO: __main__:hello
+2020-07-02 16:22:31,521: INFO: __main__:goodbye
+2020-07-02 16:22:32,628: WARNING: __main__:Received SIGINT: exiting...
+2020-07-02 16:22:32,654: DEBUG: asyncio:Close <_UnixSelectorEventLoop running=False closed=False debug=True>
