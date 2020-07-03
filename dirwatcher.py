@@ -33,13 +33,13 @@ def exit_program(sig, loop):
 
 
 async def file_generator(*, directory: str = os.getcwd(), time: int = 3):
-    # while True:
-    with os.scandir(directory) as d:
-        for entry in d:
-            print(f"file_generator: {entry}")
+    while True:
+        with os.scandir(directory) as d:
+            for entry in d:
+                print(f"file_generator: {entry}")
 
-            yield d
-            await asyncio.sleep(time)
+                yield d
+                await asyncio.sleep(time)
 
 
 async def directory_assembler():
@@ -126,9 +126,6 @@ async def main():
         # logger.info(getattr(signal, sig_name))
         loop.add_signal_handler(
             getattr(signal, sig_name), exit_program, sig_name, loop)
-
-    # async for file in files:
-    #     print(next(file))
 
     await task1, task2, task5
 
