@@ -12,6 +12,9 @@ logger.setLevel(level=logging.DEBUG)
 logging.basicConfig(filename="dirwatcher.log", level=logging.DEBUG,
                     format='%(asctime)s: %(levelname)s: %(name)s:%(message)s')
 
+line_handler = logging.FileHandler("dirwatcher.log")
+logger.addHandler(line_handler)
+
 
 async def hello(time, /):
     while True:
