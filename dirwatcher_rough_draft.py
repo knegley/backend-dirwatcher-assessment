@@ -44,6 +44,7 @@ async def stream_handler(directory: str, magic_string: str, extension: str, **kw
             file_bank_initial = [f.name for f in d if os.path.isfile(f)]
     except FileNotFoundError as e:
         logger.exception(e)
+
     except NotADirectoryError as ex:
         logger.exception(ex)
 
@@ -92,7 +93,7 @@ async def stream_handler(directory: str, magic_string: str, extension: str, **kw
 
             # logger.info(f)
             # print(os.path.basename(output))
-            with open(f) as fil:
+            with open(output) as fil:
                 lines = fil.read().splitlines()
                 # print(lines)
             for line_numb, line in enumerate(lines):
