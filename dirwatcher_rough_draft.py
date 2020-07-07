@@ -3,6 +3,7 @@ import os
 import signal
 import logging
 import datetime
+import argparse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.DEBUG)
@@ -11,11 +12,38 @@ logging.basicConfig(filename="dirwatcher_rough.log", level=logging.DEBUG,
                     format='%(asctime)s: %(levelname)s: %(name)s:%(message)s')
 
 
-async def stream_handler(*, time: int = 3, magic_string: str = "cat", directory: str = os.getcwd()) -> "async generator coroutine":
+def namespace(func):
+    description = "Searches for *Magic Word* in a file directory"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("magic", help="choose a magic string to watch")
+    parser.add_argument("-p", "--polling",
+                        help="sets polling interval", default=5, type=int)
+    parser.add_argument("-d", "--directory", type=str,
+                        help="choose directory to watch", default=os.getcwd())
+    parser.add_argument("-e", "--extension", default=".txt",
+                        help="choose file extension to monitor in directory")
+
+    args = parser.parse_args()
+
+    polling = args.polling
+    directory = args.directory
+    magic_string = args.magic
+    extension = args.extension
+    print(directory)
+    print(magic_string)
+    return lambda: func(polling=polling, directory=directory, extension=extension, magic_string=magic_string)
+
+
+@namespace
+async def stream_handler(directory, magic_string, extension, **kwargs) -> "async generator coroutine":
     """receives files and directories to be consumed"""
 
-    with os.scandir(directory) as d:
-        file_bank_initial = [f.name for f in d if os.path.isfile(f)]
+    try:
+
+        with os.scandir(directory) as d:
+            file_bank_initial = [f.name for f in d if os.path.isfile(f)]
+    except FileNotFoundError as e:
+        logger.exception("Directory does not exist")
 
     while True:
 
@@ -33,7 +61,7 @@ async def stream_handler(*, time: int = 3, magic_string: str = "cat", directory:
             # print(f"{head=}")
             # print(f"{tail=}")
 
-        elif os.path.isfile(output) and output.endswith(".txt"):
+        elif os.path.isfile(output) and output.endswith(extension):
 
             with os.scandir(directory) as direct:
                 file_bank_current = [
@@ -62,7 +90,7 @@ async def stream_handler(*, time: int = 3, magic_string: str = "cat", directory:
             # print(os.path.basename(output))
             with open(f) as fil:
                 lines = fil.read().splitlines()
-                # print(lines)
+                print(lines)
             for line_numb, line in enumerate(lines):
                 if magic_string in line:
                     print(
@@ -75,7 +103,8 @@ async def stream_handler(*, time: int = 3, magic_string: str = "cat", directory:
             # await asyncio.sleep(1)
 
 
-async def infiniteloop1(*, time: int = 3) -> None:
+@namespace
+async def infiniteloop(polling, directory, **kwargs) -> None:
     """Initiates an infinite loop that creates a stream of files and directors to be consumed"""
     # await asyncio.sleep(1)
     x = stream_handler()
@@ -83,20 +112,24 @@ async def infiniteloop1(*, time: int = 3) -> None:
 
     while True:
         print("starting")
-        with os.scandir(os.getcwd()) as d:
+        try:
+            with os.scandir(directory) as d:
 
-            for f in d:
-                await x.asend(f.__fspath__())
+                for f in d:
+                    await x.asend(f.__fspath__())
 
-            try:
                 while q := next(d):
                     await x.asend(q)
+        except FileNotFoundError as e:
+            continue
 
-            except StopIteration:
-                continue
-            finally:
-                print("ended cycle")
-                await asyncio.sleep(time)
+        except StopIteration:
+            continue
+        except StopAsyncIteration:
+            continue
+        finally:
+            print("ended cycle")
+            await asyncio.sleep(polling)
 
 
 def exit_program(sig: str, loop: str, /) ->None:
@@ -117,7 +150,7 @@ async def main():
         loop.add_signal_handler(getattr(signal, sig_name),
                                 exit_program, sig_name, loop)
 
-    task1 = asyncio.create_task(infiniteloop1())
+    task1 = asyncio.create_task(infiniteloop())
 
     await task1
 
