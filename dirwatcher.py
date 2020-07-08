@@ -16,11 +16,11 @@ def namespace(func: callable) -> callable:
     description = "Searches for *Magic Word* in a file directory"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("magic", help="choose a magic string to watch")
-    parser.add_argument("-p", "--polling",
+    parser.add_argument("-p", "--polling", metavar="",
                         help="sets polling interval", default=5, type=int)
-    parser.add_argument("-d", "--directory", type=str,
+    parser.add_argument("-d", "--directory", type=str, metavar="",
                         help="choose directory to watch", default=os.getcwd())
-    parser.add_argument("-e", "--extension", default=".txt",
+    parser.add_argument("-e", "--extension", default=".txt", metavar="",
                         help="choose file extension to monitor in directory")
 
     args = parser.parse_args()
