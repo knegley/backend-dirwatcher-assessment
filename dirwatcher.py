@@ -83,8 +83,8 @@ async def stream_handler(directory: str, magic_string: str, extension: str, **kw
                 lines = fil.read().splitlines()
 
             for line_numb, line in enumerate(lines):
-                with open("dirwatcher.log") as dir_log:
-                    log_lines = dir_log.read()
+                # with open("dirwatcher.log") as dir_log:
+                #     log_lines = dir_log.read()
 
                 if magic_string in line:
                     magic_cache.setdefault(f, [])
