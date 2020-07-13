@@ -20,7 +20,7 @@ def namespace(func: callable) -> callable:
                         help="sets polling interval", default=5, type=int)
     parser.add_argument("-d", "--directory", type=str, metavar="",
                         help="choose directory to watch", default=os.getcwd())
-    parser.add_argument("-e", "--extension", default=".txt", metavar="",
+    parser.add_argument("-e", "--extension", default=".txt",
                         help="choose file extension to monitor in directory")
 
     args = parser.parse_args()
@@ -36,6 +36,7 @@ def namespace(func: callable) -> callable:
 @namespace
 async def stream_handler(directory: str, magic_string: str, extension: str, **kwargs) -> "async generator coroutine":
     """receives files and directories to be consumed"""
+    magic_cache = {}
 
     try:
 
@@ -46,7 +47,6 @@ async def stream_handler(directory: str, magic_string: str, extension: str, **kw
 
     except NotADirectoryError as ex:
         logger.exception(ex)
-
     while True:
 
         output = yield
@@ -68,11 +68,16 @@ async def stream_handler(directory: str, magic_string: str, extension: str, **kw
                 file_bank_initial.append(f)
 
             for z in file_bank_initial:
-                is_removed = z not in file_bank_current
-                if is_removed:
+                # is_removed = z not in file_bank_current
+
+                if (is_removed := z not in file_bank_current):
                     logger.info(f"file: {z} removed")
                     file_bank_initial = [
                         item for item in file_bank_initial if item != z]
+                    print(f"before: {magic_cache}")
+                    magic_cache = {k: v for k,
+                                   v in magic_cache.items() if k != z}
+                    print(f"after: {magic_cache}")
 
             with open(output) as fil:
                 lines = fil.read().splitlines()
@@ -80,11 +85,19 @@ async def stream_handler(directory: str, magic_string: str, extension: str, **kw
             for line_numb, line in enumerate(lines):
                 with open("dirwatcher.log") as dir_log:
                     log_lines = dir_log.read()
-                if magic_string in line:
 
-                    if f"Found: {magic_string} in File:{f} on line {line_numb}" not in log_lines:
+                if magic_string in line:
+                    magic_cache.setdefault(f, [])
+                    # print(f"magic= {magic_cache[f]}")
+
+                    if (line_numb) not in magic_cache[f]:
+                        magic_cache[f].append((line_numb))
+
+                        # if f"Found: {magic_string} in File:{f} on line {line_numb + 1}" not in log_lines:
+                        #     logger.info(
+                        #         f"Found: {magic_string} in File:{f} on line {line_numb + 1}")
                         logger.info(
-                            f"Found: {magic_string} in File:{f} on line {line_numb}")
+                            f"Found:{magic_string} in File:{f} on line: {line_numb+1}")
 
 
 @namespace
