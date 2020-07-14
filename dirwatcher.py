@@ -7,8 +7,7 @@ import argparse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.DEBUG)
-filename = "dirwatcher.log"
-logging.basicConfig(filename=filename, level=logging.DEBUG,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s: %(levelname)s: %(name)s:%(message)s')
 
 
@@ -16,37 +15,58 @@ def namespace(func: callable) -> callable:
     description = "Searches for *Magic Word* in a file directory"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("magic", help="choose a magic string to watch")
+    parser.add_argument("directory",
+                        help="choose directory to watch")
     parser.add_argument("-p", "--polling", metavar="",
                         help="sets polling interval", default=5, type=int)
-    parser.add_argument("-d", "--directory", type=str, metavar="",
-                        help="choose directory to watch", default=os.getcwd())
-    parser.add_argument("-e", "--extension", default=".txt",
+    parser.add_argument("-e", "--extension", default=".txt", metavar="",
                         help="choose file extension to monitor in directory")
 
     args = parser.parse_args()
 
-    polling = args.polling
-    directory = args.directory
-    magic_string = args.magic
-    extension = args.extension
+    arguments = {
+        "polling": args.polling,
+        "directory": args.directory,
+        "magic_string": args.magic,
+        "extension": args.extension
+    }
 
-    return lambda: func(polling=polling, directory=directory, extension=extension, magic_string=magic_string)
+    return lambda: func(**arguments)
 
 
 @namespace
-async def stream_handler(directory: str, magic_string: str, extension: str, **kwargs) -> "async generator coroutine":
+# "async generator coroutine"
+async def stream_handler(directory: str,
+                         magic_string: str,
+                         extension: str, polling: int) -> None:
     """receives files and directories to be consumed"""
     magic_cache = {}
+    errors_bank = []
+    while True:
+        try:
 
-    try:
+            with os.scandir(directory) as d:
+                file_bank_initial = [f.name for f in d if os.path.isfile(f)]
 
-        with os.scandir(directory) as d:
-            file_bank_initial = [f.name for f in d if os.path.isfile(f)]
-    except FileNotFoundError as e:
-        logger.exception(e)
+        except NotADirectoryError as ex:
 
-    except NotADirectoryError as ex:
-        logger.exception(ex)
+            if ex.errno not in errors_bank:
+                errors_bank.append(ex.errno)
+                logger.exception(ex)
+
+        except FileNotFoundError as e:
+            if e.errno not in errors_bank:
+                errors_bank.append(e.errno)
+                logger.exception(e)
+
+        finally:
+
+            if os.path.isdir(directory):
+                errors_bank = []
+                break
+
+            await asyncio.sleep(polling)
+
     while True:
 
         output = yield
@@ -68,41 +88,34 @@ async def stream_handler(directory: str, magic_string: str, extension: str, **kw
                 file_bank_initial.append(f)
 
             for z in file_bank_initial:
-                # is_removed = z not in file_bank_current
+                is_removed = z not in file_bank_current
 
-                if (is_removed := z not in file_bank_current):
+                if (is_removed):
                     logger.info(f"file: {z} removed")
                     file_bank_initial = [
                         item for item in file_bank_initial if item != z]
-                    print(f"before: {magic_cache}")
+
                     magic_cache = {k: v for k,
                                    v in magic_cache.items() if k != z}
-                    print(f"after: {magic_cache}")
 
             with open(output) as fil:
                 lines = fil.read().splitlines()
 
             for line_numb, line in enumerate(lines):
-                # with open("dirwatcher.log") as dir_log:
-                #     log_lines = dir_log.read()
-
+                found = f"Found:{magic_string} File:{f} line: {line_numb+1}"
                 if magic_string in line:
                     magic_cache.setdefault(f, [])
-                    # print(f"magic= {magic_cache[f]}")
 
                     if (line_numb) not in magic_cache[f]:
                         magic_cache[f].append((line_numb))
 
-                        # if f"Found: {magic_string} in File:{f} on line {line_numb + 1}" not in log_lines:
-                        #     logger.info(
-                        #         f"Found: {magic_string} in File:{f} on line {line_numb + 1}")
-                        logger.info(
-                            f"Found:{magic_string} in File:{f} on line: {line_numb+1}")
+                        logger.info(found)
 
 
 @namespace
-async def infiniteloop(polling, directory, **kwargs) -> None:
-    """Initiates an infinite loop that creates a stream of files and directors to be consumed"""
+async def infiniteloop(polling: int, directory: str, **kwargs) -> None:
+    """Initiates an infinite loop that creates a stream of files and \
+         directors to be consumed"""
     x = stream_handler()
     await x.asend(None)
 
@@ -116,7 +129,7 @@ async def infiniteloop(polling, directory, **kwargs) -> None:
                 while q := next(d):
                     await x.asend(q)
         except FileNotFoundError as e:
-            continue
+            logger.exception(e)
         except NotADirectoryError as ex:
             logger.exception(ex)
         except StopIteration:
@@ -135,10 +148,9 @@ def exit_program(sig: str, loop: str, /) ->None:
 
 
 async def main():
-    """searches for magic text and monitors files being added or removed in a directory"""
-    print("watching...")
-    logger.info("Started")
-    logger.info(f"{(pid:=os.getpid())=}")
+    """searches for magic text and monitors files being added or \
+        removed in a directory"""
+
     loop = asyncio.get_running_loop()
     sig_names = {"SIGINT", "SIGTERM"}
 
@@ -152,7 +164,17 @@ async def main():
     await task1
 
 if __name__ == "__main__":
+    beginning = datetime.datetime.now()
     try:
+        logger.info(f"\n{'*'*40}"
+                    f"\nStarted: {beginning}\n"
+                    f"Process: {os.getpid()}\n"
+                    f"{'*'*40}\n")
         asyncio.run(main())
-    except RuntimeError:
-        logger.info("exited program")
+    except RuntimeError as e:
+        logger.exception(e)
+    finally:
+        logger.info(f"\n{'*'*40}"
+                    f"\nexited program\n"
+                    f"Runtime: {datetime.datetime.now()-beginning}"
+                    f"\n{'*'*40}")
