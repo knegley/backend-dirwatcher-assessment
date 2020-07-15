@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG,
 def namespace(func: callable) -> callable:
     description = "Searches for *Magic Word* in a file directory"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("magic", help="choose a magic string to watch")
+    parser.add_argument("magic_string", help="choose a magic string to watch")
     parser.add_argument("directory",
                         help="choose directory to watch")
     parser.add_argument("-p", "--polling", metavar="",
@@ -24,12 +24,7 @@ def namespace(func: callable) -> callable:
 
     args = parser.parse_args()
 
-    arguments = {
-        "polling": args.polling,
-        "directory": args.directory,
-        "magic_string": args.magic,
-        "extension": args.extension
-    }
+    arguments = {arg: v for arg, v in args.__dict__.items()}
 
     return lambda: func(**arguments)
 
@@ -38,7 +33,7 @@ def namespace(func: callable) -> callable:
 # "async generator coroutine"
 async def stream_handler(directory: str,
                          magic_string: str,
-                         extension: str, polling: int) -> None:
+                         extension: str, polling: int, **kwargs) -> None:
     """receives files and directories to be consumed"""
     magic_cache = {}
     errors_bank = []
